@@ -136,4 +136,4 @@ resource nginx 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
 
 output acrName string = acr.name
 output acrLoginServer string = acr.properties.loginServer
-output url string = deployApp ? 'https://${nginx.?properties.configuration.ingress.fqdn}' : ''
+output url string = deployApp ? 'https://${nginx.properties.configuration.ingress.fqdn}' : ''
