@@ -35,10 +35,11 @@ jobs:
 
       - name: Build and push image
         run: |
-          az acr build \
-            --registry ${{ steps.infra.outputs.acr }} \
-            --image nginx-app:${{ github.sha }} \
-            app/
+          ACR=${{ steps.infra.outputs.acr }}
+          IMAGE=$ACR.azurecr.io/nginx-app:${{ github.sha }}
+          az acr login --name $ACR
+          docker build -t $IMAGE app/
+          docker push $IMAGE
 
       - name: Deploy container app
         env:
