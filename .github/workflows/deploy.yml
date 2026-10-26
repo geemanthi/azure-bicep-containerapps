@@ -26,25 +26,29 @@ jobs:
         env:
           DEPLOY_APP: 'false'
         run: |
-          ACR=$(az deployment group create \
+          DEPLOYMENT_OUTPUTS=$(az deployment group create \
             --resource-group $RG \
             --template-file infrastructure/main.bicep \
             --parameters infrastructure/dev.bicepparam \
-            --query properties.outputs.acrName.value -o tsv)
+            --query properties.outputs -o json)
+          ACR=$(jq -r '.acrName.value' <<< "$DEPLOYMENT_OUTPUTS")
+          ACR_LOGIN_SERVER=$(jq -r '.acrLoginServer.value' <<< "$DEPLOYMENT_OUTPUTS")
           echo "acr=$ACR" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
+        env:
+          ACR: ${{ steps.infra.outputs.acr }}
+          IMAGE: ${{ steps.infra.outputs.acr_login_server }}/nginx-app:${{ github.sha }}
         run: |
-          ACR=${{ steps.infra.outputs.acr }}
-          IMAGE=$ACR.azurecr.io/nginx-app:${{ github.sha }}
-          az acr login --name $ACR
-          docker build -t $IMAGE app/
-          docker push $IMAGE
+          az acr login --name "$ACR"
+          docker build -t "$IMAGE" app/
+          docker push "$IMAGE"
 
       - name: Deploy container app
         env:
           DEPLOY_APP: 'true'
-          IMAGE: ${{ steps.infrastructure.outputs.acr }}.azurecr.io/nginx-app:${{ github.sha }}
+          IMAGE: ${{ steps.infra.outputs.acr_login_server }}/nginx-app:${{ github.sha }}
         run: |
           az deployment group create \
             --resource-group $RG \
