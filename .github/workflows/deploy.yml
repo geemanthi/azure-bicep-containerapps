@@ -2,14 +2,17 @@ name: deploy
 on:
   push:
     branches: [nginx*]
-    paths: [infrastructure/**]
+    paths: [infrastructure/**, app/**]
+  workflow_dispatch:
 permissions:
   id-token: write
   contents: read
 jobs:
-  deploy:
+  deploy-dev:
     runs-on: ubuntu-latest
     environment: dev
+    env:
+      RG: rg-nginx-dev
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -17,9 +20,32 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy Bicep
+
+      # - name: Deploy registry, identity and environment
+      #   id: infra
+      #   env:
+      #     DEPLOY_APP: 'false'
+      #   run: |
+      #     ACR=$(az deployment group create \
+      #       --resource-group $RG \
+      #       --template-file infra/main.bicep \
+      #       --parameters infra/dev.bicepparam \
+      #       --query properties.outputs.acrName.value -o tsv)
+      #     echo "acr=$ACR" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        run: |
+          az acr build \
+            --registry ${{ steps.infra.outputs.acr }} \
+            --image nginx-app:${{ github.sha }} \
+            app/
+
+      - name: Deploy container app
+        env:
+          DEPLOY_APP: 'true'
+          IMAGE: ${{ steps.infrastructure.outputs.acr }}.azurecr.io/nginx-app:${{ github.sha }}
         run: |
           az deployment group create \
-            --resource-group rg-nginx-dev \
+            --resource-group $RG \
             --template-file infrastructure/main.bicep \
             --parameters infrastructure/dev.bicepparam
