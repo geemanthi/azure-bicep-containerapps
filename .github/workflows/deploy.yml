@@ -21,17 +21,17 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # - name: Deploy registry, identity and environment
-      #   id: infra
-      #   env:
-      #     DEPLOY_APP: 'false'
-      #   run: |
-      #     ACR=$(az deployment group create \
-      #       --resource-group $RG \
-      #       --template-file infra/main.bicep \
-      #       --parameters infra/dev.bicepparam \
-      #       --query properties.outputs.acrName.value -o tsv)
-      #     echo "acr=$ACR" >> "$GITHUB_OUTPUT"
+      - name: Deploy registry, identity and environment
+        id: infra
+        env:
+          DEPLOY_APP: 'false'
+        run: |
+          ACR=$(az deployment group create \
+            --resource-group $RG \
+            --template-file infra/main.bicep \
+            --parameters infra/dev.bicepparam \
+            --query properties.outputs.acrName.value -o tsv)
+          echo "acr=$ACR" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         run: |
